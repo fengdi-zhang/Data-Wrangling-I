@@ -1,0 +1,137 @@
+---
+title: "Data Manipulation with `dplyr`"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+
+options(tibble.print_min = 3) #only print first 3 lines of each tibble
+
+#load litters data as tibbles and clean names
+litters_data = read_csv("./data/data_import_examples/FAS_litters.csv")
+litters_data = janitor::clean_names(litters_data)
+
+#load pups data as tibbles and clean names
+pups_data = read_csv("./data/data_import_examples/FAS_pups.csv")
+pups_data = janitor::clean_names(pups_data)
+```
+
+### `select`
+Extract a subset of cols(var) in a data table
+
+```{r}
+select(litters_data, group, litter_number, gd0_weight, pups_born_alive) #select(df, var1, var2, var3)
+```
+```{r}
+select(litters_data, group:gd_of_birth) #select a range of cols
+```
+Specify cols to remove
+```{r}
+select(litters_data, -pups_survive)
+```
+Rename var
+```{r}
+select(litters_data, GROUP = group, LiTtEr_NuMbEr = litter_number)
+#rename+select, new_name = old_name
+```
+
+If only want to rename not select, can use `rename` instead of `select`.
+```{r}
+rename(litters_data, GROUP = group, LiTtEr_NuMbEr = litter_number)
+```
+Use `?select_helpers` to see helper functions of  `select`, like `starts_with()`, `ends_with()`, `contains()`
+
+```{r}
+select(litters_data, starts_with("gd"))
+```
+`everything()` reorganize cols
+```{r}
+select(litters_data, litter_number, pups_survive, everything()) #pulls litter_number and pups_survive to front
+```
+
+`relocate` (not select helper) does similar thing
+```{r}
+relocate(litters_data, litter_number, pups_survive)
+```
+
+`select` export df not one column
+
+### `filter`
+
+select rows(observation), often filter using comparison operators(`>`, `>=`, `<`, `<=`, `==`, and `!=`).
+`%in%` detects if values appear in a set.
+`is.na()` finds missing values
+`&` and, `|` or, `!` negate
+
+Some ways you might filter the litters data are:
+* `gd_of_birth == 20`
+* `pups_survive != 4`
+* `group %in% c("Con7", "Con8")` select rows where group(col name) is Con7 or Con8
+* `group == "Con7" & gd_of_birth == 20`
+
+```{r}
+filter(litters_data, group == "Con7" & gd_of_birth == 20)
+```
+
+To omit missing observation, use `drop_na` from `tidyr` package instead of using `filter`.
+* `drop_na(litters_data)` remove any row with any missing value
+* `drop_na(litters_data, wt_increase)` remove any row for which `wt_increase` is missing.
+
+### `mutate`
+Change or create new cols
+
+```{r}
+mutate(litters_data,
+       wt_gain = gd18_weight - gd0_weight,
+       #create new column wt_gain
+       group = str_to_lower(group)
+       #change group variables to lower case
+       )
+```
+* new var appear at the end of the dataset
+* can overwrite old var
+* can create new var and immediately refer to it
+
+### `arrange`
+arrange rows according to the values in one or more columns
+
+```{r}
+head(arrange(litters_data, group, pups_born_alive), 10)
+#sort litters_data on group first and pups_born_alive second, print first 10 lines
+```
+can also sort in descending order
+```{r}
+head(arrange(litters_data, desc(group), pups_born_alive), 10)
+#sort rows according to group descendingly first, pups_born_alive ascendingly second
+```
+
+### `%>%`
+
+```{r}
+litters_data =
+  read_csv("./data/data_import_examples/FAS_litters.csv", col_types = "ccddiiii") %>%
+  janitor::clean_names() %>%
+  select(-pups_survive) %>%
+  mutate(
+    wt_gain = gd18_weight - gd0_weight,
+    group = str_to_lower(group)) %>% 
+  drop_na(wt_gain)
+
+litters_data
+```
+Ctrl + Shift + M shortcut for `%>%`
+
+can use `.` as placeholder for the result of preceding call
+```{r}
+litters_data = 
+  read_csv("./data/data_import_examples/FAS_litters.csv", col_types = "ccddiiii") %>%
+  janitor::clean_names(dat = .) %>%
+  select(.data = ., -pups_survive) %>%
+  mutate(.data = .,
+    wt_gain = gd18_weight - gd0_weight,
+    group = str_to_lower(group)) %>% 
+  drop_na(data = ., wt_gain)
+```
+
+
